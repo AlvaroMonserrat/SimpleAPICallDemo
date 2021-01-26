@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -40,58 +41,62 @@ class MainActivity : AppCompatActivity() {
 
             CoroutineScope(Dispatchers.IO).launch {
                 //In Background
-                var result: String
+                kotlin.runCatching {
+                    var result: String
+                    var connection: HttpURLConnection? = null
+                    try {
+                        val url = URL("https://run.mocky.io/v3/730bca7c-e933-49df-9026-0bb615a5b3f5")
+                        connection = url.openConnection() as HttpURLConnection
+                        connection.doInput = true
+                        connection.doOutput = true
 
-                var connection : HttpURLConnection? = null
+                        val httpResult: Int = connection.responseCode
 
-                try {
-                    val url = URL("https://run.mocky.io/v3/730bca7c-e933-49df-9026-0bb615a5b3f5")
-                    connection = url.openConnection() as HttpURLConnection
-                    connection.doInput = true
-                    connection.doOutput = true
+                        if (httpResult == HttpURLConnection.HTTP_OK) {
+                            val inputStream = connection.inputStream
 
-                    val httpResult: Int = connection.responseCode
+                            val reader = BufferedReader(InputStreamReader(inputStream))
 
-                    if(httpResult == HttpURLConnection.HTTP_OK){
-                        val inputStream = connection.inputStream
-
-                        val reader = BufferedReader(InputStreamReader(inputStream))
-
-                        val stringBuilder = StringBuilder()
-                        var line: String?
-                        try {
-                            while (reader.readLine().also { line = it } != null){
-                                stringBuilder.append(line + "\n")
-                            }
-                        }catch (e: IOException){
-                            e.printStackTrace()
-                        }finally {
+                            val stringBuilder = StringBuilder()
+                            var line: String?
                             try {
-                                inputStream.close()
-                            }catch (e: IOException){
+                                while (reader.readLine().also { line = it } != null) {
+                                    stringBuilder.append(line + "\n")
+                                }
+                            } catch (e: IOException) {
                                 e.printStackTrace()
+                            } finally {
+                                try {
+                                    inputStream.close()
+                                } catch (e: IOException) {
+                                    e.printStackTrace()
+                                }
                             }
+
+                            result = stringBuilder.toString()
+
+                        } else {
+                            result = connection.responseMessage
                         }
-
-                        result = stringBuilder.toString()
-
-                    }else{
-                        result = connection.responseMessage
+                    } catch (e: SocketTimeoutException) {
+                        result = "Connection Timeout"
+                    } catch (e: Exception) {
+                        result = "Error: " + e.message
+                    } finally {
+                        connection?.disconnect()
                     }
-                }catch (e: SocketTimeoutException){
-                    result = "Connection Timeout"
-                }catch (e: Exception){
-                    result = "Error: " + e.message
-                }finally {
-                    connection?.disconnect()
-                }
 
-                withContext(Dispatchers.Main){
-                    //On Post Execute
-                    binding.mainText.text = result
-                    cancelProgressDialog()
+                    withContext(Dispatchers.Main) {
+                        //On Post Execute
 
-                    Log.i("JSON RESPONSE RESULT", result)
+                        cancelProgressDialog()
+
+                        Log.i("JSON RESPONSE RESULT", result)
+
+                        val jsonObject = JSONObject(result)
+                        val message = jsonObject.optString("name")
+                        binding.mainText.text = message
+                    }
                 }
             }
 
