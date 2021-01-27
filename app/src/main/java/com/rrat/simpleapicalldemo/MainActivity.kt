@@ -4,6 +4,7 @@ import android.app.Dialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import com.google.gson.Gson
 import com.rrat.simpleapicalldemo.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
+import java.io.DataOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.lang.Exception
@@ -28,11 +30,11 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        CallAPILoginAsyncTask().onExecuteCalled()
+        CallAPILoginAsyncTask("Alvaro", "12351").onExecuteCalled()
     }
 
 
-    private inner class CallAPILoginAsyncTask(){
+    private inner class CallAPILoginAsyncTask(val username: String, val password: String){
 
         private lateinit var customProgressDialog: Dialog
 
@@ -45,11 +47,31 @@ class MainActivity : AppCompatActivity() {
                     var result: String
                     var connection: HttpURLConnection? = null
                     try {
-                        val url = URL("https://run.mocky.io/v3/730bca7c-e933-49df-9026-0bb615a5b3f5")
+                        val url = URL("http://www.mocky.io/v2/5e3826143100006a00d37ffa")
                         connection = url.openConnection() as HttpURLConnection
                         connection.doInput = true
                         connection.doOutput = true
 
+                        /*
+                        connection.instanceFollowRedirects = false
+
+                        connection.requestMethod = "POST"
+                        connection.setRequestProperty("Content-Type", "application/json")
+                        connection.setRequestProperty("charset", "utf-8")
+                        connection.setRequestProperty("Accept", "application/json")
+
+                        connection.useCaches = false
+
+                        val writeDataOutputStream = DataOutputStream(connection.outputStream)
+                        val jsonRequest = JSONObject()
+                        jsonRequest.put("username", username)
+                        jsonRequest.put("password", password)
+
+
+                        writeDataOutputStream.writeBytes(jsonRequest.toString())
+                        writeDataOutputStream.flush()
+                        writeDataOutputStream.close()
+                        */
                         val httpResult: Int = connection.responseCode
 
                         if (httpResult == HttpURLConnection.HTTP_OK) {
@@ -93,9 +115,11 @@ class MainActivity : AppCompatActivity() {
 
                         Log.i("JSON RESPONSE RESULT", result)
 
-                        val jsonObject = JSONObject(result)
-                        val message = jsonObject.optString("name")
-                        binding.mainText.text = message
+                        val responseData = Gson().fromJson(result, ResponseData::class.java)
+
+                        //val jsonObject = JSONObject(result)
+                        //val message = jsonObject.optString("name")
+                        binding.mainText.text = responseData.message
                     }
                 }
             }
